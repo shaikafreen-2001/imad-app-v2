@@ -1,0 +1,95 @@
+# imad-app-v2
+
+IMAD V2 course application.
+from flask import Flask, jsonify, request
+import random
+
+app = Flask(__name__)
+
+# Room Data
+rooms = {
+    "Floor 1": [101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
+    "Floor 2": [201, 202, 203, 204, 205, 206, 207, 208, 209, 210],
+    "Floor 3": [301, 302, 303, 304, 305, 306, 307, 308, 309, 310],
+    "Floor 10": [1001, 1002, 1003, 1004, 1005, 1006, 1007]
+}
+
+@app.route('/book_rooms', methods=['POST'])
+def book_rooms():
+    data = request.json
+    num_rooms = data['num_rooms']
+    booked_rooms = []
+    for floor, rooms_list in rooms.items():
+        if len(rooms_list) >= num_rooms:
+            booked_rooms = rooms_list[:num_rooms]
+            rooms[floor] = rooms_list[num_rooms:]
+            break
+    return jsonify(booked_rooms)
+
+@app.route('/randomize_occupancy', methods=['GET'])
+def randomize_occupancy():
+    all_rooms = sum(rooms.values(), [])
+    random.shuffle(all_rooms)
+    occupancy = {floor: random.sample(rooms_list, random.randint(0, len(rooms_list))) for floor, rooms_list in rooms.items()}
+    return jsonify(occupancy)
+
+@app.route('/reset_booking', methods=['GET'])
+def reset_booking():
+    for floor in rooms:
+        rooms[floor] = [i for i in range(101, 111)]  # Reset rooms to available state
+    return jsonify({'message': 'Booking reset successful'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+import React, { useState } from 'react';
+
+function App() {
+  const [numRooms, setNumRooms] = useState(0);
+  const [bookedRooms, setBookedRooms] = useState([]);
+  
+  const handleBookRooms = async () => {
+    const response = await fetch('/book_rooms', {
+      method: 'POST',
+      body: JSON.stringify({ num_rooms: numRooms }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    setBookedRooms(data);
+  };
+
+  const handleRandomizeOccupancy = async () => {
+    const response = await fetch('/randomize_occupancy');
+    const data = await response.json();
+    // Handle occupancy logic for the visualization
+  };
+
+  const handleResetBooking = async () => {
+    const response = await fetch('/reset_booking');
+    const data = await response.json();
+    setBookedRooms([]);
+  };
+
+  return (
+    <div className="App">
+      <input 
+        type="number" 
+        value={numRooms} 
+        onChange={(e) => setNumRooms(e.target.value)} 
+        placeholder="Enter number of rooms" 
+      />
+      <button onClick={handleBookRooms}>Book Rooms</button>
+      <button onClick={handleRandomizeOccupancy}>Randomize Occupancy</button>
+      <button onClick={handleResetBooking}>Reset Booking</button>
+
+      {/* Visualize booked rooms */}
+      <div>
+        {bookedRooms.map((room) => (
+          <div key={room}>{room}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default App;
